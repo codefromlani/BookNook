@@ -11,11 +11,11 @@ class User(UserMixin, db.Model):
     __tablename__ = 'users'
     
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    username = db.Column(db.String(64), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
-    first_name = db.Column(db.String(64))
-    last_name = db.Column(db.String(64))
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    username = db.Column(db.String(255), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255))
+    first_name = db.Column(db.String(255))
+    last_name = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_admin = db.Column(db.Boolean, default=False)
 
@@ -64,13 +64,13 @@ class Book(db.Model):
     __tablename__ = 'books'
     
     id = db.Column(db.Integer, primary_key=True)
-    isbn = db.Column(db.String(13), unique=True, nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    author = db.Column(db.String(100), nullable=False)
+    isbn = db.Column(db.String(255), unique=True, nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+    author = db.Column(db.String(255), nullable=False)
     price = db.Column(db.Numeric(10, 2), nullable=False)
     stock = db.Column(db.Integer, default=0)
     description = db.Column(db.Text)
-    publisher = db.Column(db.String(100))
+    publisher = db.Column(db.String(255))
     publication_date = db.Column(db.Date)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
