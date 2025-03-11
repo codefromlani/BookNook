@@ -16,6 +16,10 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
+    app.config['JWT_JSON_KEY_FUNCTIONS'] = {
+        'identity_claim_key': lambda: 'sub'
+    }
+
     db.init_app(app)
     login.init_app(app)
     migrate.init_app(app, db)
@@ -24,9 +28,12 @@ def create_app(config_class=Config):
 
     login.login_view = 'auth.login'
 
-    from app.auth import bp as auth_bp
+    from app.auth.routes import bp as auth_bp
     app.register_blueprint(auth_bp, url_prefix='/auth')
+
+    from app.books.routes import bp as books_bp
+    app.register_blueprint(books_bp, url_prefix='/books')
 
     return app
 
-from app import models 
+# from app import models 
