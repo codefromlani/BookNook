@@ -9,9 +9,11 @@ from app.auth.validators import validate_email, validate_password
 bp = Blueprint('auth', __name__)
 
 def generate_tokens(user):
-    access_token = create_access_token(identity=user.id)
-    refresh_token = create_refresh_token(identity=user.id)
+    user_id_str = str(user.id)
+    access_token = create_access_token(identity=user_id_str)
+    refresh_token = create_refresh_token(identity=user_id_str)
     return access_token, refresh_token
+
 
 @bp.route('/register', methods=['POST'])
 def register():
@@ -77,6 +79,8 @@ def login():
 @jwt_required(refresh=True)
 def refresh():
     current_user_id = get_jwt_identity()
+    if not isinstance(current_user_id, str):
+        current_user_id = str(current_user_id)
     access_token = create_access_token(identity=current_user_id)
     return jsonify({'access_token': access_token}), 200
 
