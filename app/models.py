@@ -72,10 +72,49 @@ class Book(db.Model):
     description = db.Column(db.Text)
     publisher = db.Column(db.String(255))
     publication_date = db.Column(db.Date)
+    category = db.Column(db.String(225), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     reviews = db.relationship('Review', backref='book', lazy='dynamic')
     order_items = db.relationship('OrderItem', backref='book', lazy='dynamic')
+
+    @property
+    def average_rating(self):
+        reviews = self.reviews.all()
+        if not reviews:
+            return 0
+        return sum(review.rating for review in reviews) / len(reviews)
+    
+    def to_dict(self, include_reviews=False):
+        data = {
+            'id': self.id,
+            'isbn': self.isbn,
+            'title': self.title,
+            'author': self.author,
+            'price': float(self.price),
+            'stock': self.stock,
+            'description': self.description,
+            'publisher': self.publisher,
+            'publication_date': self.publication_date.isoformat() if self.publication_date else None,
+            'category': self.category,
+            'average_rating': self.average_rating
+        }
+
+        if include_reviews:
+            data['review'] = [
+                {
+                    'id': review.id,
+                    'rating': review.rating,
+                    'comment': review.comment,
+                    'created_at': review.created_at.isoformat(),
+                    'user': {
+                        'id': review.author.id,
+                        'username': review.author.username
+                    }
+                }
+                for review in self.reviews.order_by(Review.created_at.desc()).all()
+            ]
+        return data
 
 class OrderStatusEnum(Enum):
     PENDING = "pending"
