@@ -114,6 +114,7 @@ class Book(db.Model):
                 }
                 for review in self.reviews.order_by(Review.created_at.desc()).all()
             ]
+            
         return data
 
 class OrderStatusEnum(Enum):
@@ -152,3 +153,70 @@ class Review(db.Model):
     comment = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow) 
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'book_id': self.book_id,
+            'rating': self.rating,
+            'comment': self.comment,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+            'user': {
+                'id': self.author.id,
+                'username': self.author.username
+            }
+        }
+
+class Cart(db.Model):
+    __tablename__ = 'carts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    items = db.relationship('CartItem', backref='cart', lazy='dynamic', cascade='all, delete-orphan')
+    customer = db.relationship('User', backref=db.backref('cart', uselist=False))
+
+    @property
+    def total_amount(self):
+        return sum(item.subtotal for item in self.items)
+    
+    @property
+    def total_items(self):
+        return sum(item.quantity for item in self.items)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'total_amount': float(self.total_amount),
+            'total_items': self.total_items,
+            'items': [item.to_dict() for item in self.items],
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
+        }
+    
+class CartItem(db.Model):
+    __tablename__ = 'cart_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cart_id = db.Column(db.Integer, db.ForeignKey('carts.id'), nullable=False)
+    book_id = db.Column(db.Integer, db.ForeignKey('books.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False, default=1)
+
+    book = db.relationship('Book', backref='cart_items')
+
+    @property
+    def subtotal(self):
+        return self.book.price * self.quantity
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'book': self.book.to_dict(),
+            'quantity': self.quantity,
+            'subtotal': float(self.subtotal)
+        } 
