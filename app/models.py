@@ -18,6 +18,7 @@ class User(UserMixin, db.Model):
     last_name = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_admin = db.Column(db.Boolean, default=False)
+    is_blocked = db.Column(db.Boolean, default=False)
 
     orders = db.relationship('Order', backref='customer', lazy='dynamic')
     reviews = db.relationship('Review', backref='author', lazy='dynamic')
@@ -57,7 +58,9 @@ class User(UserMixin, db.Model):
             'email': self.email,
             'first_name': self.first_name,
             'last_name': self.last_name,
-            'is_admin': self.is_admin
+            'is_admin': self.is_admin,
+            'is_blocked': self.is_blocked,
+            'created_at': self.created_at.isoformat()
         }
 
 class Book(db.Model):
