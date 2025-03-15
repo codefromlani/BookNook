@@ -13,3 +13,6 @@ def make_shell_context():
         'OrderItem': OrderItem,
         'Review': Review
     } 
+
+if __name__ == "__main__":
+    app.run(debug=True)
