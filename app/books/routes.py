@@ -65,7 +65,9 @@ def list_books():
 
 @bp.route('/<int:id>', methods=['GET'])
 def get_book(id):
-    book = Book.query.get_or_404(id)
+    book = db.session.get(Book, id)
+    if not book:
+        return jsonify({'error': 'Book not found'}), 404
     return jsonify(book.to_dict(include_reviews=True))
 
 @bp.route('/search', methods=['GET'])
