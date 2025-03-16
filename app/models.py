@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
@@ -16,7 +16,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(255))
     first_name = db.Column(db.String(255))
     last_name = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     is_admin = db.Column(db.Boolean, default=False)
     is_blocked = db.Column(db.Boolean, default=False)
 
@@ -76,7 +76,7 @@ class Book(db.Model):
     publisher = db.Column(db.String(255))
     publication_date = db.Column(db.Date)
     category = db.Column(db.String(225), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     
     reviews = db.relationship('Review', backref='book', lazy='dynamic')
     order_items = db.relationship('OrderItem', backref='book', lazy='dynamic')
@@ -104,7 +104,7 @@ class Book(db.Model):
         }
 
         if include_reviews:
-            data['review'] = [
+            data['reviews'] = [
                 {
                     'id': review.id,
                     'rating': review.rating,
@@ -177,8 +177,8 @@ class Cart(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
 
     items = db.relationship('CartItem', backref='cart', lazy='dynamic', cascade='all, delete-orphan')
     customer = db.relationship('User', backref=db.backref('cart', uselist=False))
