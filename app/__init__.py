@@ -33,6 +33,15 @@ def create_app(config_class=Config):
 
     from app.books.routes import bp as books_bp
     app.register_blueprint(books_bp, url_prefix='/books')
+    
+    from app.cart.routes import bp as cart_bp
+    app.register_blueprint(cart_bp, url_prefix='/api')
+
+    from app.reviews.routes import bp as reviews_bp
+    app.register_blueprint(reviews_bp, url_prefix='/api')
+
+    from app.admin.routes import bp as admin_bp
+    app.register_blueprint(admin_bp, url_prefix='/admin')
 
     return app
 
