@@ -30,7 +30,7 @@ def add_to_cart():
         return jsonify({'error': 'Missing required fields'}), 400
     
     try:
-        book = Book.query.get_or_404(data['book_id'])
+        book = db.session.get(Book, data['book_id'])
         if book.stock < data['quantity']:
             return jsonify({'error': 'Not enough stock available'}), 400
         
@@ -38,8 +38,9 @@ def add_to_cart():
         if not cart:
             cart = Cart(user_id=user_id)
             db.session.add(cart)
+            db.session.commit()
 
-        cart_item = CartItem.query.filter_by(cart_id=cart.id, book_id=data['book_id'])
+        cart_item = CartItem.query.filter_by(cart_id=cart.id, book_id=data['book_id']).first()
         if cart_item:
             cart_item.quantity += data['quantity']
         else:
@@ -47,8 +48,13 @@ def add_to_cart():
             db.session.add(cart_item)
 
         db.session.commit()
-        return jsonify(cart.to_dict())
-    
+        return jsonify({
+            'total_item': CartItem.query.filter_by(cart_id=cart.id).count(),
+            'items': [{'book': book.to_dict(), 'quantity': cart_item.quantity} for cart_item in CartItem.query.filter_by(cart_id=cart.id).all()]
+        }), 200
+    except Exception as e:
+        db.session.rollback()  
+        return jsonify({'error': str(e)}), 500
     except NoResultFound:
         return jsonify({'error': 'Book not found'}), 404
     
