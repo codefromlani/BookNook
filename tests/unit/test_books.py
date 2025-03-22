@@ -61,3 +61,29 @@ def test_get_book_details(client, sample_book):
     assert response.json['author'] == 'Test Author'
     assert response.json['price'] == 29.99
     assert 'reviews' in response.json
+
+def test_get_categories(client, app):
+    with app.app_context():
+        categories = ['Fiction', 'Non-Fiction', 'Science', 'Technology']
+        for category in categories:
+            book = Book(
+                isbn=f'cat{category}',
+                title=f'{category} Book',
+                author='Test Author',
+                price=29.99,
+                stock=5,
+                category=category
+            )
+            db.session.add(book)
+        db.session.commit()
+    
+    response = client.get('/books/categories')
+    assert response.status_code == 200
+    assert 'categories' in response.json
+    assert len(response.json['categories']) == 4
+    for category in categories:
+        assert category in response.json['categories']
+
+def test_book_not_found(client):
+    response = client.get('/books/999')
+    assert response.status_code == 404 
