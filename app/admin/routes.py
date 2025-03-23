@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
-from app.models import Book, Order, User, OrderItem, Review
+from app.models import Book, Order, User, OrderItem
 from app.admin.utils import admin_required
 from sqlalchemy import func
 from datetime import datetime, timedelta
