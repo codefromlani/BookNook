@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
@@ -130,7 +130,7 @@ class Order(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    order_date = db.Column(db.DateTime, default=datetime.utcnow)
+    order_date = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     total_amount = db.Column(db.Numeric(10, 2), nullable=False)
     status = db.Column(db.Enum(OrderStatusEnum), default=OrderStatusEnum.PENDING)  # pending, completed, cancelled
     shipping_address = db.Column(db.Text, nullable=False)
