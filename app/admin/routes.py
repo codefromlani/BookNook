@@ -223,7 +223,7 @@ def get_sales_report():
         func.count(Order.id).label('num_orders')
     ).filter(
         Order.order_date.between(start_date, end_date),
-        Order.status == 'completed'
+        Order.status == 'COMPLETED'
     ).group_by(
         func.date(Order.order_date)
     ).all()
@@ -259,7 +259,7 @@ def get_popular_books_report():
         Order
     ).filter(
         Order.order_date.between(start_date, end_date),
-        Order.status == 'completed'
+        Order.status == 'COMPLETED'
     ).group_by(
         Book.id
     ).order_by(
