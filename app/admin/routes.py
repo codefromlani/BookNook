@@ -295,7 +295,7 @@ def get_customer_activity_report():
         Order
     ).filter(
         Order.order_date.between(start_date, end_date),
-        Order.status == 'completed'
+        Order.status == 'COMPLETED'
     ).group_by(
         User.id
     ).order_by(
