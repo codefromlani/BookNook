@@ -4,7 +4,7 @@ from app import db
 from app.models import Book, Order, User, OrderItem
 from app.admin.utils import admin_required
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 bp = Blueprint('admin', __name__)
 
@@ -134,7 +134,7 @@ def get_order_details(order_id):
         } for item in order.items]
     })
 
-@bp.route('/orders<int:order_id>', methods=['PUT'])
+@bp.route('/orders/<int:order_id>/status', methods=['PUT'])
 @jwt_required()
 @admin_required
 def update_order_status(order_id):
@@ -208,7 +208,7 @@ def get_user_order_history(user_id):
 @admin_required
 def get_sales_report():
     period = request.args.get('period', 'month')  # week, month, year
-    end_date = datetime.utcnow()
+    end_date = datetime.now(timezone.utc)
 
     if period == 'week':
         start_date = end_date - timedelta(days=7)
@@ -241,7 +241,7 @@ def get_popular_books_report():
     period = request.args.get('period', 'month')
     limit = request.args.get('limit', 10, type=int)
     
-    end_date = datetime.utcnow()
+    end_date = datetime.now(timezone.utc)
     if period == 'week':
         start_date = end_date - timedelta(days=7)
     elif period == 'month':
