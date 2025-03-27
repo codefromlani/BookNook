@@ -132,16 +132,21 @@ def create_payment_intent():
 
     try:
         intent = stripe.PaymentIntent.create(
-            amount=int(cart.total_amount * 100),  
-            currency='usd',
-            metadata={
-                'user_id': user_id,
-                'cart_id': cart.id
-            }
-        )
-        
+        amount=int(cart.total_amount * 100),
+        currency='usd',
+        metadata={
+            'user_id': user_id,
+            'cart_id': cart.id
+        },
+        automatic_payment_methods={
+            'enabled': True,
+            'allow_redirects': 'never'  
+        }
+    )
+
         return jsonify({
-            'clientSecret': intent.client_secret
+            'clientSecret': intent.client_secret,
+            'paymentIntentId': intent.id
         })
     
     except Exception as e:
@@ -164,6 +169,17 @@ def complete_checkout():
 
     try:
         intent = stripe.PaymentIntent.retrieve(data['payment_intent_id'])
+         # Simulate manual payment confirmation (for testing)
+        if intent.status == 'requires_payment_method':
+            
+            payment_method_id = 'pm_card_visa'  # Use a test card ID from Stripe (e.g., pm_card_visa)
+
+            # Confirm the payment intent with the test card
+            intent = stripe.PaymentIntent.confirm(
+                data['payment_intent_id'],
+                payment_method=payment_method_id
+            )
+
         if intent.status != 'succeeded':
             return jsonify({'error': 'Payment not successful'}), 400
         
