@@ -12,7 +12,7 @@ def has_purchased_book(user_id, book_id):
         and_(
             Order.user_id == user_id,
             OrderItem.book_id == book_id,
-            Order.status == 'completed'
+            Order.status == 'COMPLETED'
         )
     ).first() is not None
 
@@ -61,7 +61,7 @@ def update_review(review_id):
     user_id = get_jwt_identity()
     review = Review.query.get_or_404(review_id)
 
-    if review.user_id != user_id:
+    if int(review.user_id) != int(user_id):  
         return jsonify({'error': 'You can only update your own reviews'}), 403
     
     data = request.get_json()
