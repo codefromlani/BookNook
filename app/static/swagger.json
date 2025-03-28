@@ -15,7 +15,7 @@
         "securitySchemes": {
             "bearerAuth": {
                 "type": "http",
-                "schemes": "bearer",
+                "scheme": "bearer",
                 "bearerFormat": "JWT"
             }
         },
@@ -29,6 +29,7 @@
                     "first_name": { "type": "string" },
                     "last_name": { "type": "string" },
                     "is_admin": { "type": "boolean" },
+                    "is_blocked": { "type": "boolean" },
                     "created_at": { "type": "string", "format": "date-time" }
                 }
             },
@@ -87,15 +88,23 @@
                     "shipping_address": { "type": "string" },
                     "order_date": { "type": "string", "format": "date-time" }
                 }
+            },
+            "OrderItem": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "integer" },
+                    "book_id": { "type": "integer" },
+                    "quantity": { "type": "integer" },
+                    "price_at_time": { "type": "number", "format": "float" },
+                    "book": { "$ref": "#/components/schemas/Book" }
+                }
             }
         }
     },
     "paths": {
         "/auth/register": {
             "post": {
-                "tags": [
-                    "Auth"
-                ],
+                "tags": ["Auth"],
                 "summary": "Register a new user",
                 "requestBody": {
                     "required": true,
@@ -141,9 +150,7 @@
         },
         "/auth/login": {
             "post": {
-                "tags": [
-                    "Auth"
-                ],
+                "tags": ["Auth"],
                 "summary": "Login user",
                 "requestBody": {
                     "required": true,
@@ -180,6 +187,1171 @@
                 },
                 "401": {
                     "description": "Invalid credentials"
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "tags": ["Auth"],
+                "summary": "Refresh access token",
+                "security": [{ "bearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "Token refreshed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "access_token": { "type": "string" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/reset-password-request": {
+            "post": {
+                "tags": ["Auth"],
+                "summary": "Request password reset",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["email"],
+                                "properties": { "email": { "type": "string", "format": "email" } }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password reset instructions have been sent to your email"
+                    },
+                    "400": {
+                        "description": "Email is required"
+                    }
+                }
+            }
+        },
+        "/auth/reset-password/{token}": {
+            "post": {
+                "tags": ["Auth"],
+                "summary": "Reset password using the token",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["password"],
+                                "properties": {
+                                    "password": {
+                                        "type": "string", 
+                                        "format": "password", 
+                                        "minLength": 8, 
+                                        "pattern": "(?=.*[A-Za-z])(?=.*\\d)" 
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password has been reset successfully"
+                    },
+                    "400": {
+                        "description": "New password is required or invalid/expired reset token"
+                    }
+                }
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "tags": ["Auth"],
+                "summary": "Get current user details",
+                "security": [{ "bearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "Current user details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                     "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/books": {
+            "post": {
+                "tags": ["Admin"],
+                "summary": "Create new book",
+                "security": [{ "bearerAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["isbn", "title", "author", "price", "stock", "category"],
+                                "properties": {
+                                    "isbn": { "type": "string" },
+                                    "title": { "type": "string" },
+                                    "author": { "type": "string" },
+                                    "price": { "type": "number" },
+                                    "stock": { "type": "integer" },
+                                    "description": { "type": "string" },
+                                    "publisher": { "type": "string" },
+                                    "publication_date": { "type": "string", "format": "date" },
+                                    "category": { "type": "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Book created",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Book" }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or ISBN already exists"
+                    },
+                    "403": {
+                        "description": "Admin privileges required"
+                    }
+                }
+            }
+        },
+        "/admin/books/{book_id}": {
+            "put": {
+                "tags": ["Admin"],
+                "summary": "Update book",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "book_id",
+                        "schema": { "type": "integer" },
+                        "required": true,
+                        "description": "Book ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": { "type": "string" },
+                                    "author": { "type": "string" },
+                                    "price": { "type": "number" },
+                                    "stock": { "type": "integer" },
+                                    "description": { "type": "string" },
+                                    "publisher": { "type": "string" },
+                                    "publication_date": { "type": "string", "format": "date" },
+                                    "category": { "type": "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Book updated",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Book" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Admin privileges required"
+                    },
+                    "404": {
+                        "description": "Book not found"
+                    }
+                }
+            },
+            "delete": {
+                "tags": ["Admin"],
+                "summary": "Delete book",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "book_id",
+                        "schema": { "type": "integer" },
+                        "required": true,
+                        "description": "Book ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Book deleted"
+                    },
+                    "403": {
+                        "description": "Admin privileges required"
+                    },
+                    "404": {
+                        "description": "Book not found"
+                    }
+                }
+            }
+        },
+        "/admin/orders": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "Get all orders",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "schema": { "type": "string", "enum": ["pending", "completed", "cancelled"] },
+                        "description": "Filter by order status"
+                    },
+                    {
+                        "in": "query",
+                        "name": "page",
+                        "schema": { "type": "integer", "default": 1 },
+                        "description": "Page number"
+                    },
+                    {
+                        "in": "query",
+                        "name": "per_page",
+                        "schema": { "type": "integer", "default": 10 },
+                        "description": "Items per page"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of orders",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "orders": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/Order" }
+                                        },
+                                        "total": { "type": "integer" },
+                                        "pages": { "type": "integer" },
+                                        "current_page": { "type": "integer" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description":"Admin privileges required"
+                    }
+                }
+            }
+        },
+        "/admin/orders/{order_id}": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "Get order details",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "order_id",
+                        "schema": { "type": "integer" },
+                        "required": true,
+                        "description": "Order ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Order details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "order": {
+                                            "type": "object",
+                                            "items": { "$ref": "#/components/schemas/OrderItem" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Admin privileges required"
+                    }
+                }
+            }
+        },
+        "/admin/orders/{order_id}/status": {
+            "put": {
+                "tags": ["Admin"],
+                "summary": "Update order status",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "order_id",
+                        "schema": { "type": "integer" },
+                        "required": true,
+                        "description": "Order ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["status"],
+                                "properties": {
+                                    "status": {
+                                        "type": "string",
+                                        "enum": ["pending", "completed", "cancelled"]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Order status updated"
+                    },
+                    "400": {
+                        "description": "Invalid status"
+                    },
+                    "403": {
+                        "description": "Admin privileges required"
+                    },
+                    "404": {
+                        "description": "Order not found"
+                    }
+                }
+            }
+        },
+        "/admin/users": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "Get all users",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "page",
+                        "schema": { "type": "integer", "default": 1 },
+                        "description": "Page number"
+                    },
+                    {
+                        "in": "query",
+                        "name": "per_page",
+                        "schema": { "type": "integer", "default": 10 },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of users",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type":"object",
+                                    "properties": {
+                                        "users": [{"$ref": "#/components/schemas/User" }],
+                                        "total": { "type": "integer" },
+                                        "pages": { "type": "integer" },
+                                        "current_page": { "type": "integer" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Admin privileges required"
+                    }
+                }
+            }
+        },
+        "/admin/users/{user_id}/block": {
+            "put": {
+                "tags": ["Admin"],
+                "summary": "Toggle user block",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "user_id",
+                        "schema": { "type": "integer" },
+                        "required": true,
+                        "description": "User ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": { "is_blocked": { "type": "boolean", "default": false } }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "User blocked/unblocked successfully"
+                    },
+                    "403": {
+                        "description": "Admin privileges required"
+                    }
+                }
+            }
+        },
+        "/admin/users/{user_id}/orders": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "Get user order history",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "user_id",
+                        "schema": { "type": "integer" },
+                        "required": true,
+                        "description": "User ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List user order history",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "orders": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/Order" }
+                                        },
+                                        "items": [{ "$ref": "#/components/schemas/OrderItem"}]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/reports/sales": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "Get sales report",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "period",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["week", "month", "year"],
+                            "default": "month"
+                        },
+                        "description": "Report period"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sales report",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "date": { "type": "string", "format": "date" },
+                                            "total_sales": { "type": "number" },
+                                            "num_orders": { "type": "integer" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Admin privileges required"
+                    }
+                }
+            }
+        },
+        "/admin/reports/popular-books": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "Get popular books reports",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "period",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["week", "month", "year"],
+                            "default": "month"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "type": "integer",
+                            "default": 10,
+                            "minimum": 1
+                        },
+                        "description": "Limit the number of books returned"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Popular-books reports",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "date": { "$ref": "#/components/schemas/Book" },
+                                            "total_quantity_sold": { "type": "integer" },
+                                            "total_revenue": { "type": "number" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Admin privileges required"
+                    }
+                }
+            }
+        },
+        "/admin/reports/customer-activity": {
+            "get": {
+                "tags": ["Admin"],
+                "summary": "Get customer activity reports",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "period",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["week", "month", "year"],
+                            "default": "month"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "type": "integer",
+                            "default": 10,
+                            "minimum": 1
+                        },
+                        "description": "Limit the number of customers returned"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Customer-activity reports",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "user": { "$ref": "#/components/schemas/User" },
+                                        "total_orders": { "type": "integer"},
+                                        "total_spent": { "type": "number", "format": "float"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Admin privileges required"
+                    }
+                }
+            }
+        },
+        "/books/list": {
+            "get": {
+                "tags": ["Books"],
+                "summary": "List all books",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "category",
+                        "schema": { "type": "string" },
+                        "description": "Filter by category"
+                    },
+                    {
+                        "in": "query",
+                        "name": "min_price",
+                        "schema": { "type": "number" },
+                        "description": "Minimum price"
+                    },
+                    {
+                        "in": "query",
+                        "name": "max_price",
+                        "schema": { "type": "number" },
+                        "description": "Maximum price"
+                    },
+                    {
+                        "in": "query",
+                        "name": "min_rating",
+                        "schema": { "type": "number" },
+                        "description": "Minimum rating"
+                    },
+                    {
+                        "in": "query",
+                        "name": "page",
+                        "schema": { "type": "integer", "default": 1 },
+                        "description": "Page number"
+                    },
+                    {
+                        "in": "query",
+                        "name": "per_page",
+                        "schema": { "type": "integer", "default": 10 },
+                        "description": "Items per page"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of books",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "books": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/Book" }
+                                        },
+                                        "total":  { "type": "integer" },
+                                        "page": { "type": "integer" },
+                                        "per_page": { "type": "integer" },
+                                        "total_pages": { "type": "integer" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/books/search": {
+            "get": {
+                "tags": ["Books"],
+                "summary": "Search books",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "q",
+                        "schema": { "type": "string" },
+                        "description": "Search query"
+                    },
+                    {
+                        "in": "query",
+                        "name": "category",
+                        "schema": { "type": "string" },
+                        "description": "Filter by category"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Search results",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "books": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/Book" }
+                                        },
+                                        "total": { "type": "integer" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/books/{id}": {
+            "get": {
+                "tags": ["Books"],
+                "summary": "Get book details",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": { "type": "integer" },
+                        "required": true,
+                        "description": "Book ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Book details",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Book" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Book not found"
+                    }
+                }
+            }
+        },
+        "/books/categories": {
+            "get": {
+                "tags": ["Books"],
+                "summary": "Get all book categories",
+                "responses": {
+                    "200": {
+                        "description": "List of categories",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "categories": {
+                                            "type": "array",
+                                            "items": { "type": "string" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/cart": {
+            "get": {
+                "tags": ["Cart"],
+                "summary": "Get user's cart",
+                "security": [{ "bearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "User's cart",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Cart" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/cart/add": {
+            "post": {
+                "tags": ["Cart"],
+                "summary": "Add item to cart",
+                "security": [{ "bearerAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["book_id", "quantity"],
+                                "properties": {
+                                    "book_id": { "type": "integer" },
+                                    "quantity": { "type": "integer", "minimum": 1 }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description":"Item added to cart",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Cart" }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or insufficient stock"
+                    }
+                }
+            }
+        },
+        "/api/cart/update/{item_id}": {
+            "put": {
+                "tags": ["Cart"],
+                "summary": "Update cart item quantity",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "item_id",
+                        "schema": { "type": "integer" },
+                        "required": true,
+                        "description": "Cart item ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["quantity"],
+                                "properties": {
+                                    "quantity": { "type": "integer", "minimum": 0 }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Cart item updated",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Cart" }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid quantity or insufficient stock"
+                    },
+                    "404": {
+                        "description": "Cart item not found"
+                    }
+                }
+            }
+        },
+        "/api/cart/remove/{item_id}": {
+            "delete": {
+                "tags": ["Cart"],
+                "summary": "Remove item from cart",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "item_id",
+                        "schema": { "type": "integer" },
+                        "required": true,
+                        "description": "Cart item ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Item removed from cart",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Cart" }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Cart item not found"
+                    }
+                }
+            }
+        },
+        "/api/cart/clear": {
+            "post": {
+                "tags": ["Cart"],
+                "summary": "Clear cart",
+                "security": [{ "bearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "Cart cleared successfully"
+                    }
+                }
+            }
+        },
+        "/api/checkout/create-payment-intent": {
+            "post": {
+                "tags": ["Cart"],
+                "summary": "Create payment intent",
+                "security": [{ "bearerAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["shipping_address"],
+                                "properties": {
+                                    "shipping_address": { "type": "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Payment intent created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "clientSecret": { "type": "string" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Cart is empty or invalid input"
+                    }
+                }
+            }
+        },
+        "/api/checkout/complete": {
+            "post": {
+                "tags": ["Cart"],
+                "summary": "Complete checkout",
+                "security": [{ "bearerAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["payment_intent_id", "shipping_address"],
+                                "properties": {
+                                    "payment_intent_id": { "type": "string" },
+                                    "shipping_address": { "type": "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Order completed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": { "type": "string" },
+                                        "order": { "$ref": "#/components/schemas/Order" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Payment failed or invalid input"
+                    }
+                }
+            }
+        },
+        "/api/books/{book_id}/reviews": {
+            "get": {
+                "tags": ["Reviews"],
+                "summary": "Get book reviews",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "book_id",
+                        "schema": { "type": "integer" },
+                        "required": true,
+                        "description": "Book ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of reviews",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/Review" } 
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Book not found"
+                    }
+                }
+            },
+            "post": {
+                "tags": ["Reviews"],
+                "summary": "Create book review",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "book_id",
+                        "schema": { "type": "integer" },
+                        "required": true,
+                        "description": "Book ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["rating", "comment"],
+                                "properties": {
+                                    "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+                                    "comment": { "type": "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Review created",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Review" }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or already reviewed"
+                    },
+                    "403": {
+                        "description": "Not purchased the book"
+                    },
+                    "404": {
+                        "description": "Book not found"
+                    }
+                }
+            }
+        },
+        "/api/reviews/{review_id}": {
+            "put": {
+                "tags": ["Reviews"],
+                "summary": "Update review",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "review_id",
+                        "schema": { "type": "integer" },
+                        "required": true,
+                        "description": "Review ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["rating", "comment"],
+                                "properties": {
+                                    "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+                                    "comment": { "type": "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Review updated",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Review" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not the review owner"
+                    },
+                    "404": {
+                        "description": "Review not found"
+                    }
+                }
+            },
+            "delete": {
+                "tags": ["Reviews"],
+                "summary": "Delete review",
+                "security": [{ "bearerAuth": [] }],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "review_id",
+                        "schema": { "type": "integer" },
+                        "required": true,
+                        "description": "Review ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Review deleted"
+                    },
+                    "403": {
+                        "description": "Not the review owner"
+                    },
+                    "404": {
+                        "description": "Review not found"
+                    }
+                }
+            }
+        },
+        "/api/users/reviews": {
+            "get": {
+                "tags": ["Reviews"],
+                "summary": "Get user's reviews",
+                "security": [{ "bearerAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "List of user's reviews",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/Review" }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
