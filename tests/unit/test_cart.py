@@ -55,16 +55,21 @@ def test_clear_cart(client, auth_headers, sample_cart):
 
 @patch('stripe.PaymentIntent.create')
 def test_create_payment_intent_success(mock_create, client, auth_headers, sample_cart):
-    mock_payment_intent = MagicMock(client_secret='test_client_secret_xxx')
+    mock_payment_intent = MagicMock(client_secret='test_client_secret_xxx', id='test_payment_intent_id')
     mock_create.return_value = mock_payment_intent
 
     response = client.post('/api/checkout/create-payment-intent',
-        json={'shipping_address': '123 Test St, Test City, 12345'},
-        headers=auth_headers                    
-    )
+                         json={'shipping_address': '123 Test St, Test City, 12345'},
+                         headers=auth_headers
+                        )
+    
     assert response.status_code == 200
-    assert 'clientSecret' in response.json
-    assert response.json['clientSecret'] == 'test_client_secret_xxx'
+    response_data = response.get_json()
+    assert 'clientSecret' in response_data
+    assert response_data['clientSecret'] == 'test_client_secret_xxx'
+    assert 'paymentIntentId' in response_data
+    assert response_data['paymentIntentId'] == 'test_payment_intent_id'
+    mock_create.assert_called_once()
 
 def test_create_payment_intent_empty_cart(client, auth_headers):
     response = client.post('/api/checkout/create-payment-intent',
