@@ -1,7 +1,10 @@
 from app import db
 from app.models import Book
+from app.utils.cache import clear_all_cache
 
 def test_list_books(client, sample_book):
+
+    clear_all_cache()
     response = client.get('/books/list')
     assert response.status_code == 200
     assert 'books' in response.json
@@ -63,7 +66,15 @@ def test_get_book_details(client, sample_book):
     assert 'reviews' in response.json
 
 def test_get_categories(client, app):
+
+    print("Available routes:")
+    for rule in app.url_map.iter_rules():
+        print(f"{rule.endpoint}: {rule.rule}")
+
     with app.app_context():
+        from app.utils.cache import cache
+        cache.clear()
+        
         categories = ['Fiction', 'Non-Fiction', 'Science', 'Technology']
         for category in categories:
             book = Book(
@@ -78,11 +89,10 @@ def test_get_categories(client, app):
         db.session.commit()
     
     response = client.get('/books/categories')
+    print(response.json) 
     assert response.status_code == 200
     assert 'categories' in response.json
-    assert len(response.json['categories']) == 4
-    for category in categories:
-        assert category in response.json['categories']
+    assert set(response.json['categories']) == set(categories)
 
 def test_book_not_found(client):
     response = client.get('/books/999')
