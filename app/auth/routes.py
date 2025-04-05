@@ -5,6 +5,7 @@ from app import db
 from app.models import User
 from app.auth.email import send_password_reset_email
 from app.auth.validators import validate_email, validate_password
+from app.utils.rate_limit import ip_limit, user_limit
 
 bp = Blueprint('auth', __name__)
 
@@ -16,6 +17,7 @@ def generate_tokens(user):
 
 
 @bp.route('/register', methods=['POST'])
+@ip_limit("50 per minute, 200 per hour")
 def register():
     data = request.get_json()
 
@@ -56,6 +58,7 @@ def register():
     }), 201
 
 @bp.route('/login', methods=['POST'])
+@ip_limit("100 per minute")
 def login():
     data = request.get_json()
 
@@ -78,6 +81,7 @@ def login():
 
 @bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
+@user_limit("150 per hour")
 def refresh():
     current_user_id = get_jwt_identity()
     if not isinstance(current_user_id, str):
@@ -86,6 +90,7 @@ def refresh():
     return jsonify({'access_token': access_token}), 200
 
 @bp.route('/reset-password-request', methods=['POST'])
+@ip_limit("30 per hour")
 def reset_password_request():
     data = request.get_json()
 
@@ -101,7 +106,9 @@ def reset_password_request():
     }), 200
 
 @bp.route('/reset-password/<token>', methods=['POST'])
+@ip_limit("50 per hour")
 def reset_password(token):
+
     data = request.get_json()
 
     if 'password' not in data:
@@ -121,6 +128,7 @@ def reset_password(token):
 
 @bp.route('/me', methods=['GET'])
 @jwt_required()
+@user_limit("200 per minute") # maybe 600
 def get_current_user():
     current_user_id = get_jwt_identity()
     user = db.session.get(User, current_user_id)
