@@ -5,6 +5,7 @@ from app.models import Book, Order, User, OrderItem
 from app.admin.utils import admin_required
 from sqlalchemy import func
 from datetime import datetime, timedelta, timezone
+from app.books.routes import invalidate_book_cache
 
 bp = Blueprint('admin', __name__)
 
@@ -36,6 +37,8 @@ def create_book():
 
     db.session.add(book)
     db.session.commit()
+    
+    invalidate_book_cache()
 
     return jsonify(book.to_dict()), 201
 
@@ -64,15 +67,19 @@ def update_book(book_id):
         book.category = data['category']
 
     db.session.commit()
+
+    invalidate_book_cache(book_id)
     return jsonify(book.to_dict())
 
-@bp.route('/books<int:book_id>', methods=['DELETE'])
+@bp.route('/books/<int:book_id>', methods=['DELETE'])
 @jwt_required()
 @admin_required
 def delete_book(book_id):
     book = Book.query.get_or_404(book_id)
     db.session.delete(book)
     db.session.commit()
+
+    invalidate_book_cache(book_id)
     return jsonify({'message': 'Book deleted successfully'})
 
 # Order Management
@@ -108,7 +115,7 @@ def get_all_orders():
         'current_page': page
     })
 
-@bp.route('/orders<int:order_id>', methods=['GET'])
+@bp.route('/orders/<int:order_id>', methods=['GET'])
 @jwt_required()
 @admin_required
 def get_order_details(order_id):
@@ -279,7 +286,7 @@ def get_customer_activity_report():
     period = request.args.get('period', 'month')
     limit = request.args.get('limit', 10, type=int)
     
-    end_date = datetime.utcnow()
+    end_date = datetime.now(timezone.utc)
     if period == 'week':
         start_date = end_date - timedelta(days=7)
     elif period == 'month':
