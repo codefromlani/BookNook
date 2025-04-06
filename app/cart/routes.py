@@ -4,11 +4,14 @@ import stripe
 from app import db
 from app.models import Cart, CartItem, Book, Order, OrderItem, OrderStatusEnum
 from sqlalchemy.orm.exc import NoResultFound
+from app.utils.rate_limit import user_limit
+
 
 bp = Blueprint('cart', __name__)
 
 @bp.route('/cart', methods=['GET'])
 @jwt_required()
+@user_limit("60 per minute")
 def get_cart():
     user_id = get_jwt_identity()
     cart = Cart.query.filter_by(user_id=user_id).first()
@@ -22,6 +25,7 @@ def get_cart():
 
 @bp.route('/cart/add', methods=['POST'])
 @jwt_required()
+@user_limit("30 per minute")
 def add_to_cart():
     user_id = get_jwt_identity()
     data = request.get_json()
@@ -60,6 +64,7 @@ def add_to_cart():
     
 @bp.route('/cart/update/<int:item_id>', methods=['PUT'])
 @jwt_required()
+@user_limit("30 per minute")
 def update_cart_item(item_id):
     user_id = get_jwt_identity()
     data = request.get_json()
@@ -87,6 +92,7 @@ def update_cart_item(item_id):
 
 @bp.route('/cart/remove/<int:item_id>', methods=['DELETE'])
 @jwt_required()
+@user_limit("30 per minute")
 def remove_from_cart(item_id):
     user_id = get_jwt_identity()
     cart = Cart.query.filter_by(user_id=user_id).first()
@@ -105,6 +111,7 @@ def remove_from_cart(item_id):
 
 @bp.route('/cart/clear', methods=['POST'])
 @jwt_required()
+@user_limit("10 per minute")
 def clear_cart():
     user_id = get_jwt_identity()
     cart = Cart.query.filter_by(user_id=user_id).first()
@@ -117,6 +124,7 @@ def clear_cart():
 
 @bp.route('/checkout/create-payment-intent', methods=['POST'])
 @jwt_required()
+@user_limit("5 per minute, 20 per hour")
 def create_payment_intent():
     user_id = get_jwt_identity()
     cart = Cart.query.filter_by(user_id=user_id).first()
@@ -154,6 +162,7 @@ def create_payment_intent():
     
 @bp.route('/checkout/complete', methods=['POST'])
 @jwt_required()
+@user_limit("5 per minute, 20 per hour")
 def complete_checkout():
     user_id = get_jwt_identity()
     data = request.get_json()
