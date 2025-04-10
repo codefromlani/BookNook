@@ -55,7 +55,7 @@ jobs:
         
     - name: Run security checks
       run: |
-        safety check
+        safety scan
         
     - name: Run tests with coverage
       env:
