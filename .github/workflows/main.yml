@@ -50,7 +50,7 @@ jobs:
         
     - name: Authenticate Safety CLI
       run: |
-        echo ${{ secrets.SAFETY_API_KEY }} | safety auth --token
+        safety auth login --api-key ${{ secrets.SAFETY_API_KEY }}
         
     - name: Run linting
       run: |
